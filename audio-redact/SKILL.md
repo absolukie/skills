@@ -14,10 +14,10 @@ VENV=~/workspace/skills/audio-redact/.venv/bin/python
 BIN=~/workspace/skills/audio-redact/bin/redact-audio.py
 
 # 1. Dry run first: see what will be bleeped, with transcript context
-$VENV $BIN call.mp3 --pii "张路坤,福1088,555-010-1000" -o out.mp3 --dry-run
+$VENV $BIN call.mp3 --pii "张路坤,福1088,5550101000" -o out.mp3 --dry-run
 
 # 2. Run for real (verifies by re-transcribing the redacted audio)
-$VENV $BIN call.mp3 --pii "张路坤,福1088,555-010-1000" -o out.mp3
+$VENV $BIN call.mp3 --pii "张路坤,福1088,5550101000" -o out.mp3
 ```
 
 ## How it works
