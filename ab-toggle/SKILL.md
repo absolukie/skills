@@ -27,3 +27,4 @@ The A/B comparison toggle for design docs and blog posts. One switch, one stage:
 2. The thumb must always indicate the *currently shown* side, not the side a tap would show.
 3. Keep the tap target generous: full-width up to ~420px, 16px+ labels, `touch-action: manipulation` so rapid taps never zoom.
 4. Don't put the toggle inside the stage — the button sits above it, the stage below, so a tap never confuses "flip" with "interact with content."
+5. **Thumb labels get internal horizontal margin** (his 2026-10-10 call: on the how-models-learn primer the "Predict representations" label touched the thumb edges). Each label needs breathing room inside the thumb: minimum ~14px of horizontal margin on each side. Size the thumb and track so the longest label fits comfortably — shrink the label font, widen the thumb, or both, but never let label text touch the thumb edge. Verify with a screenshot at 390px: if any glyph grazes the pill boundary, it fails.

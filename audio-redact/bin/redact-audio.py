@@ -7,7 +7,7 @@ PII matching -> redaction (default: clean cut to silence with smooth fades;
 redacted audio.
 
 Usage:
-    redact-audio.py INPUT.mp3 --pii "John Smith,5550101000,Acme Corp" -o out.mp3
+    redact-audio.py INPUT.mp3 --pii "John Smith,555-010-1000,Acme Corp" -o out.mp3
     redact-audio.py INPUT.mp3 --pii "name,number" --dry-run   # list segments only
 
 Notes:

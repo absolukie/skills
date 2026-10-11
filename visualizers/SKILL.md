@@ -1,6 +1,6 @@
 ---
 name: "visualizers"
-description: "Luke's five visualizer patterns: zoom bars (comparison bars with a magnified inset strip for tiny deltas), dot-grid simulator (N dots re-run with staggered animation for probability/risk), live formula slider (slider driving instant recomputed readouts + a dynamic insight line), estimator + caveat card (computed estimate beside a prominent callout that overrides the naive reading), and source link-out cards (stacked source cards with type badges). Dependency-free vanilla JS/CSS, mobile-first."
+description: "Luke's six visualizer patterns: zoom bars (comparison bars with a magnified inset strip for tiny deltas), dot-grid simulator (N dots re-run with staggered animation for probability/risk), live formula slider (slider driving instant recomputed readouts + a dynamic insight line), estimator + caveat card (computed estimate beside a prominent callout that overrides the naive reading), source link-out cards (stacked source cards with type badges), and live mic visualizer (tap-to-start microphone driving a real-time waveform plus a scrolling waterfall spectrogram, analyzed on-device). Dependency-free vanilla JS/CSS, mobile-first."
 ---
 
 # Visualizers Skill
@@ -14,8 +14,9 @@ Four interactive patterns for making numbers *felt*, extracted from the SPF 30/5
 - **Live formula slider** — any what-if calculator: one input drives several instantly recomputed readouts plus a dynamic insight line that states the takeaway in words.
 - **Estimator + caveat card** — an estimate whose model's limits matter more than its output: computed rows beside a prominent, always-visible caveat callout.
 - **Source link-out cards** — the Sources section at the end of a post: stacked cards with a source-type badge, full-width title, and one-line citation meta. No JS.
+- **Live mic visualizer** — letting the reader speak into the page and see their own voice: a tap-to-start mic button driving a live waveform strip plus a scrolling waterfall spectrogram, analyzed on-device. Use when seeing your own input teaches the concept (spectrograms, pitch, vowels vs fricatives).
 
-All five can live on the same page. Each script is an IIFE scoped to its own element IDs — no shared globals, no collisions.
+All six can live on the same page. Each script is an IIFE scoped to its own element IDs — no shared globals, no collisions.
 
 ## Shared theme block
 Put this once per page; every pattern below reads these variables. Retheme by changing six values.
@@ -32,23 +33,19 @@ Put this once per page; every pattern below reads these variables. Retheme by ch
 
 ---
 
-## Pattern 1 — Zoom bars
+## Pattern 1 — Comparison bars
 
-Horizontal comparison bars where each bar is 100% of something, plus a magnified inset strip on the last few percent so tiny deltas become visible. Generalizes to any "the interesting difference is small" comparison.
+Horizontal comparison bars where each bar is 100% of something, with the fill growing from the left and the remainder (sliver) settling in from the right edge. That simultaneous opposing motion is the feel.
 
 ### Structure
 ```html
-<div class="vzb-row" data-value="96.7" data-tail="3.3" data-window="5" data-cap="of every 100 get through">
+<div class="vzb-row" data-value="96.7" data-tail="3.3" data-cap="of every 100 get through">
   <div class="vzb-lab"><b>SPF 30</b><span><b>96.7%</b> blocked</span></div>
   <div class="vzb-bar"><div class="vzb-fill"></div><div class="vzb-sliver"></div></div>
-  <div class="vzb-zoom">
-    <div class="vzb-zoomtag">zoomed 20× · the last 5%</div>
-    <div class="vzb-zbar"><div class="vzb-zfill"></div><div class="vzb-zsliver"></div></div>
-    <div class="vzb-zoomcap"></div>
-  </div>
+  <div class="vzb-cap"></div>
 </div>
 ```
-- `data-value`: the big number (0–100). `data-tail`: the small remainder shown as the sliver. `data-window`: the zoom window in percent (5 → "20×" label is `100/window`; compute it, don't hardcode). `data-cap`: the per-row caption after the bold tail number (see rule 5).
+- `data-value`: the big number (0–100). `data-tail`: the small remainder shown as the sliver. `data-cap`: the per-row caption after the bold tail number (see rule 3).
 
 ### CSS
 ```css
@@ -62,17 +59,10 @@ Horizontal comparison bars where each bar is 100% of something, plus a magnified
 .vzb-bar .vzb-sliver{position:absolute; top:0; bottom:0; right:0; width:0; background:var(--viz-danger); transition:width 1.1s cubic-bezier(.2,.7,.2,1);}
 .vzb-row.go .vzb-bar .vzb-fill{width:var(--w);}
 .vzb-row.go .vzb-bar .vzb-sliver{width:var(--t);}
-.vzb-zoom{margin-top:8px;}
-.vzb-zoomtag{font-family:var(--viz-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--viz-faint); margin-bottom:6px;}
-.vzb-zbar{position:relative; height:20px; background:var(--viz-panel2); border:1px solid var(--viz-line); border-radius:7px; overflow:hidden;}
-.vzb-zbar .vzb-zfill{position:absolute; inset:0 auto 0 0; width:0; background:linear-gradient(90deg,#c98a2e,var(--viz-accent)); transition:width 1.1s cubic-bezier(.2,.7,.2,1);}
-.vzb-zbar .vzb-zsliver{position:absolute; top:0; bottom:0; right:0; width:0; background:var(--viz-danger); transition:width 1.1s cubic-bezier(.2,.7,.2,1);}
-.vzb-row.go .vzb-zbar .vzb-zfill{width:var(--zw);}
-.vzb-row.go .vzb-zbar .vzb-zsliver{width:var(--zt);}
-.vzb-zoomcap{font-size:13.5px; color:var(--viz-muted); margin-top:6px; font-variant-numeric:tabular-nums;}
-.vzb-zoomcap b{color:var(--viz-danger);}
+.vzb-cap{font-size:13.5px; color:var(--viz-muted); margin-top:6px; font-variant-numeric:tabular-nums;}
+.vzb-cap b{color:var(--viz-danger);}
 @media (prefers-reduced-motion:reduce){
-  .vzb-bar .vzb-fill,.vzb-bar .vzb-sliver,.vzb-zbar .vzb-zfill,.vzb-zbar .vzb-zsliver{transition:none;}
+  .vzb-bar .vzb-fill,.vzb-bar .vzb-sliver{transition:none;}
 }
 ```
 
@@ -86,28 +76,18 @@ Horizontal comparison bars where each bar is 100% of something, plus a magnified
     var v = vzbClamp(value);
     return { fill: v, sliver: 100 - v };
   }
-  function vzbZoomWidths(tail, win){
-    var w = win > 0 ? win : 5;
-    var t = Math.min(Math.max(tail, 0), w);
-    return { zfill: (w - t) / w * 100, zsliver: t / w * 100, factor: Math.round(100 / w) };
-  }
   /* DOM wiring */
   var rows = document.querySelectorAll('.vzb-row');
   rows.forEach(function(row){
     var value = parseFloat(row.getAttribute('data-value'));
     var tail  = parseFloat(row.getAttribute('data-tail'));
-    var win   = parseFloat(row.getAttribute('data-window')) || 5;
     if(!(value >= 0)) value = 0;
     if(!(tail >= 0)) tail = 0;
-    var m = vzbMainWidths(value), z = vzbZoomWidths(tail, win);
+    var m = vzbMainWidths(value);
     row.style.setProperty('--w', m.fill + '%');
     row.style.setProperty('--t', m.sliver + '%');
-    row.style.setProperty('--zw', z.zfill + '%');
-    row.style.setProperty('--zt', z.zsliver + '%');
-    var tag = row.querySelector('.vzb-zoomtag');
-    if(tag) tag.textContent = 'zoomed ' + z.factor + '× · the last ' + win + '%';
     var cap = row.getAttribute('data-cap') || '';
-    var zc = row.querySelector('.vzb-zoomcap');
+    var zc = row.querySelector('.vzb-cap');
     if(zc) zc.innerHTML = '<b>' + tail.toFixed(1) + '</b> ' + cap.replace(/</g, '&lt;');
   });
   function arm(){ rows.forEach(function(r){ r.classList.add('go'); }); }
@@ -120,17 +100,16 @@ Horizontal comparison bars where each bar is 100% of something, plus a magnified
     rows.forEach(function(r){ io.observe(r); });
   } else { arm(); }
   /* expose pure fns for tests */
-  window.__vzb = { main: vzbMainWidths, zoom: vzbZoomWidths };
+  window.__vzb = { main: vzbMainWidths };
 })();
 </script>
 ```
 
 ### Operating rules
-1. **The zoom label is computed, never hardcoded** (`100/window` rounded) — a 10% window reads "zoomed 10×".
-2. **Bars animate once on scroll into view** (IntersectionObserver, 0.35 threshold, unobserve after). All four widths (main fill, main sliver, zoom fill, zoom sliver) transition together on the same `go` class: `width 1.1s cubic-bezier(.2,.7,.2,1)`. The fill grows left-to-right while the sliver settles in from the right edge — that simultaneous opposing motion is the feel he called out loving (2026-10-09, HERMES). No-JS/no-IO fallback: bars render at full width immediately.
-3. **No layout shift**: bar heights are fixed; the zoom strip is always in the DOM, never injected on interaction.
-4. `prefers-reduced-motion: reduce` kills the width transition.
-5. **Per-row zoom captions via `data-cap`** (added 2026-10-09, HERMES). The caption after the bold tail number differs per row ("of every 100 get through" vs "nothing saved. this is the baseline."), so it lives in a `data-cap` attribute, never hardcoded in the JS. The number itself is always `tail.toFixed(1)` in the danger color. Zero-tail rows keep the zoom strip (all fill, no sliver) with their own caption — the strip never disappears, so rows stay visually consistent.
+1. **Bars animate once on scroll into view** (IntersectionObserver, 0.35 threshold, unobserve after). Both widths (main fill, sliver) transition together on the same `go` class: `width 1.1s cubic-bezier(.2,.7,.2,1)`. The fill grows left-to-right while the sliver settles in from the right edge — that simultaneous opposing motion is the feel he called out loving (2026-10-09, HERMES). No-JS/no-IO fallback: bars render at full width immediately.
+2. **No layout shift**: bar heights are fixed.
+3. `prefers-reduced-motion: reduce` kills the width transition.
+4. **Per-row captions via `data-cap`** (added 2026-10-09, HERMES). The caption after the bold tail number differs per row ("of every 100 get through" vs "nothing saved. this is the baseline."), so it lives in a `data-cap` attribute, never hardcoded in the JS. The number itself is always `tail.toFixed(1)` in the danger color.
 
 ---
 
@@ -524,12 +503,200 @@ Stacked cards for a Sources section. Each card names the source type up top (bad
 
 ---
 
+## Pattern 6 — Live mic visualizer
+
+A tap-to-start microphone button driving two live canvases: a thin raw-waveform strip on top and a scrolling waterfall spectrogram below (x = time scrolling left, y = frequency, color = intensity). Born 2026-10-11 on the voice-ai primer ("speak into it and see it on the website"). The FFT runs entirely on-device; the recipe contains no network code at all.
+
+### Structure
+```html
+<div class="vmv" id="mv1">
+  <button type="button" class="vmv-btn" aria-pressed="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+    <span class="vmv-btnlabel">Tap to speak</span>
+  </button>
+  <p class="vmv-status" aria-live="polite"></p>
+  <canvas class="vmv-wave" role="img" aria-label="Live microphone waveform"></canvas>
+  <canvas class="vmv-spec" role="img" aria-label="Live scrolling spectrogram"></canvas>
+  <p class="vmv-cap"></p>
+  <p class="vmv-priv">Analyzed on your device, never uploaded.</p>
+</div>
+```
+
+### CSS
+```css
+.vmv{margin:14px 0;}
+.vmv-btn{display:inline-flex; align-items:center; gap:10px; font-family:inherit; font-size:16px; font-weight:600;
+  background:var(--viz-panel2); color:var(--viz-ink); border:1px solid var(--viz-line); border-radius:999px;
+  padding:12px 20px; cursor:pointer; touch-action:manipulation;}
+.vmv-btn svg{width:20px; height:20px;}
+.vmv-btn:active{transform:scale(.97);}
+.vmv-btn[aria-pressed="true"]{border-color:var(--viz-danger); color:var(--viz-danger);}
+.vmv-status{font-size:14px; color:var(--viz-muted); margin:10px 0 0; min-height:1.4em;}
+.vmv canvas{display:block; width:100%; border:1px solid var(--viz-line); border-radius:12px; background:#0f0e0c;}
+.vmv-wave{height:56px; margin:10px 0 8px;}
+.vmv-spec{height:180px;}
+.vmv-cap{font-size:14px; color:var(--viz-muted); margin:10px 0 0;}
+.vmv-priv{font-size:13px; color:var(--viz-faint); margin:6px 0 0;}
+```
+
+### JS (copy-paste; CONFIG block at the top, pure heat-scale fn is unit-testable)
+```html
+<script>
+(function(){
+  /* ---------- CONFIG: edit me ---------- */
+  var CFG = {
+    rootId: 'mv1',
+    fftSize: 2048,
+    waveCssH: 56,
+    specCssH: 180,
+    /* heat scale stops: [t, [r,g,b]], paper -> accent */
+    heat: [[0,[246,241,227]],[0.45,[232,163,61]],[1,[179,53,43]]],
+    startLabel: 'Tap to speak',
+    stopLabel: 'Tap to stop',
+    restartLabel: 'Tap to speak again',
+    deniedMsg: 'Microphone is blocked. Open this page in Safari and try again.',
+    noMicMsg: 'No microphone found.'
+  };
+  /* ---------- pure, testable ---------- */
+  function vmvHeat(t, stops){
+    t = Math.min(1, Math.max(0, t));
+    for(var i = 1; i < stops.length; i++){
+      if(t <= stops[i][0]){
+        var f = (t - stops[i-1][0]) / Math.max(1e-6, stops[i][0] - stops[i-1][0]);
+        var a = stops[i-1][1], b = stops[i][1];
+        return 'rgb(' + Math.round(a[0]+(b[0]-a[0])*f) + ',' + Math.round(a[1]+(b[1]-a[1])*f) + ',' + Math.round(a[2]+(b[2]-a[2])*f) + ')';
+      }
+    }
+    var l = stops[stops.length-1][1];
+    return 'rgb(' + l[0] + ',' + l[1] + ',' + l[2] + ')';
+  }
+  /* ---------- DOM wiring ---------- */
+  var root = document.getElementById(CFG.rootId);
+  if(!root) return;
+  var btn = root.querySelector('.vmv-btn');
+  var btnLabel = root.querySelector('.vmv-btnlabel');
+  var status = root.querySelector('.vmv-status');
+  var waveC = root.querySelector('.vmv-wave');
+  var specC = root.querySelector('.vmv-spec');
+  var waveX = waveC.getContext('2d');
+  var specX = specC.getContext('2d');
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var ctx = null, stream = null, analyser = null, raf = 0, timer = 0;
+  var running = false, everStarted = false;
+  var freqData = null, timeData = null;
+
+  function fit(){
+    var dpr = window.devicePixelRatio || 1;
+    [[waveC, CFG.waveCssH],[specC, CFG.specCssH]].forEach(function(p){
+      var w = p[0].clientWidth;
+      p[0].width = Math.max(1, Math.round(w * dpr));
+      p[0].height = Math.max(1, Math.round(p[1] * dpr));
+    });
+  }
+  function drawWave(){
+    var w = waveC.width, h = waveC.height, dpr = window.devicePixelRatio || 1;
+    analyser.getByteTimeDomainData(timeData);
+    waveX.fillStyle = '#0f0e0c';
+    waveX.fillRect(0, 0, w, h);
+    waveX.strokeStyle = '#e8a33d';
+    waveX.lineWidth = Math.max(1, dpr);
+    waveX.beginPath();
+    for(var i = 0; i < timeData.length; i++){
+      var x = (i / (timeData.length - 1)) * w;
+      var y = ((timeData[i] - 128) / 128) * (h * 0.42) + h / 2;
+      if(i === 0) waveX.moveTo(x, y); else waveX.lineTo(x, y);
+    }
+    waveX.stroke();
+  }
+  function drawSpec(){
+    var w = specC.width, h = specC.height;
+    var step = Math.max(2, Math.round(window.devicePixelRatio || 1));
+    analyser.getByteFrequencyData(freqData);
+    specX.drawImage(specC, -step, 0); /* scroll existing image left */
+    var bins = analyser.frequencyBinCount;
+    for(var y = 0; y < h; y++){
+      var bin = Math.floor((1 - y / h) * (bins - 1)); /* bin 0 (bass) at the bottom */
+      specX.fillStyle = vmvHeat(freqData[bin] / 255, CFG.heat);
+      specX.fillRect(w - step, y, step, 1);
+    }
+  }
+  function tick(){
+    if(!running) return;
+    drawWave();
+    drawSpec();
+    if(reduced) timer = setTimeout(tick, 500); /* ~2fps under reduced motion */
+    else raf = requestAnimationFrame(tick);
+  }
+  function setRunning(on){
+    running = on;
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btnLabel.textContent = on ? CFG.stopLabel : (everStarted ? CFG.restartLabel : CFG.startLabel);
+  }
+  function stop(say){
+    if(raf) cancelAnimationFrame(raf);
+    if(timer) clearTimeout(timer);
+    raf = 0; timer = 0;
+    if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+    if(ctx){ ctx.suspend(); }
+    analyser = null;
+    setRunning(false);
+    if(say) status.textContent = say;
+  }
+  btn.addEventListener('click', function(){
+    if(running){ stop('Tap to speak again.'); return; }
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      status.textContent = CFG.noMicMsg;
+      return;
+    }
+    status.textContent = '';
+    navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true}}).then(function(s){
+      stream = s;
+      var AC = window.AudioContext || window.webkitAudioContext;
+      ctx = new AC();
+      if(ctx.state === 'suspended') ctx.resume(); /* iOS: resume inside the gesture */
+      var src = ctx.createMediaStreamSource(stream);
+      analyser = ctx.createAnalyser();
+      analyser.fftSize = CFG.fftSize;
+      src.connect(analyser);
+      freqData = new Uint8Array(analyser.frequencyBinCount);
+      timeData = new Uint8Array(analyser.fftSize);
+      everStarted = true;
+      fit();
+      setRunning(true);
+      tick();
+    }, function(){
+      status.textContent = CFG.deniedMsg; /* never throws to console */
+    });
+  });
+  window.addEventListener('resize', fit);
+  fit();
+  /* expose pure fn for tests */
+  window.__vmv = { heat: vmvHeat };
+})();
+</script>
+```
+
+### Operating rules
+1. **AudioContext is created and resumed inside the tap gesture.** iOS will not start audio outside a user gesture; creating it earlier leaves it suspended forever.
+2. **Stop everything on end.** Stop all tracks, suspend the context, cancel the frame loop. A leaked stream keeps the browser's recording indicator on.
+3. **On-device only, and say so.** The recipe contains no network code at all. Keep the "Analyzed on your device, never uploaded." caption next to the widget so the reader knows.
+4. **Deny gracefully.** The widget renders and lays out fine with no mic. Permission denial names the fix ("Open this page in Safari and try again"): pages opened in an iOS bottom-sheet webview can have mic permission blocked, and the denied state covers it. Never throw to console; show messages in the status line.
+5. **Reduced motion throttles to ~2fps** instead of the full-rate loop.
+6. **Canvases are devicePixelRatio-aware** and re-fit on resize; the waterfall scrolls in device pixels so it stays crisp.
+
+### QA notes
+- Playwright cannot provide a real mic: stub `getUserMedia` to resolve with a fake stream for the running state and to reject with a DOMException for the denied state.
+- Assert the button label/state flips (idle → running → "tap to speak again"), both canvases paint non-blank frames (sample pixels), the denied message appears with no pageerrors, and 390px layout holds (`scrollWidth <= 390`).
+- Screenshot idle, running, and denied states at full size and review them.
+
+---
+
 ## Cross-pattern operating rules
 1. Each script is an IIFE with a CONFIG block at the top — adapt by editing CONFIG, never the wiring.
-2. IDs are per-instance (`dg1`, `fs1`, `es1`); duplicate a pattern on one page by copying the block and changing the IDs + CONFIG `rootId`.
+2. IDs are per-instance (`dg1`, `fs1`, `es1`, `mv1`); duplicate a pattern on one page by copying the block and changing the IDs + CONFIG `rootId`.
 3. All four scripts are inert if their root element is missing (`if(!root) return`) — safe to include page-wide.
 4. Colors come from the shared theme block; the danger/accent semantics (`--viz-accent` = majority/good, `--viz-danger` = the sliver/warning) stay consistent across patterns on a page.
-5. **Stepper navigation: edge-straddling circle arrows, never a button row** (evolved 2026-10-08 to 2026-10-09: the Taylor sheet hid terminal buttons instead of disabling them; the ai-bank-heist stepper pinned Next with `margin-left:auto` and locked content height; the sidecar post replaced the Next/Back pill row with gutter arrows, which Luke preferred, then refined four times: no overlaying content, no height lock, bare chevrons, then back to circles straddling the card edge and nudged lower, the classic carousel look). Final spec: 46px circles with bespoke SVG chevrons (22px, `currentColor`, round caps), dark translucent fill + border + subtle shadow, straddling the card's left/right edges (half in, half out: `left:-23px` / `right:-23px`), pinned with a FIXED `top` offset from the card's top edge (not `top:50%`): the card's top never moves between steps, so the arrows can't bounce even though each step sizes to its natural height. `touch-action:manipulation`; `:active` scale. Terminal arrows are `display:none`, never disabled. Keep: the dots + count row and arrow-key support with the standard guards. Verify: each arrow's bounding box identical across all steps where visible; no horizontal page overflow from the overhang at 390px; card heights vary naturally per step; zero drift while spamming through every step.
+5. **Stepper navigation: edge-straddling circle arrows, never a button row** (evolved 2026-10-08 to 2026-10-09: the Taylor sheet hid terminal buttons instead of disabling them; the ai-bank-heist stepper pinned Next with `margin-left:auto` and locked content height; the sidecar post replaced the Next/Back pill row with gutter arrows, which Luke preferred, then refined four times: no overlaying content, no height lock, bare chevrons, then back to circles straddling the card edge and nudged lower, the classic carousel look). Final spec: 46px circles with bespoke SVG chevrons (22px, `currentColor`, round caps), dark translucent fill + border + subtle shadow, straddling the card's left/right edges (half in, half out: `left:-23px` / `right:-23px`), pinned with a FIXED `top` offset from the card's top edge (not `top:50%`): the card's top never moves between steps, so the arrows can't bounce even though each step sizes to its natural height. **Arrow vertical anchor (his 2026-10-10 call):** the arrows sit at the vertical midway of an anchor card, fixed for all steps. Measure every step card's natural height at init (reset min-height first, paint each step, record offsetHeight, restore). Anchor = the first card, unless the first card is significantly taller than the smallest card (over 1.5x), in which case the anchor is the smallest card. Every card gets `min-height` = anchor height, so shorter cards grow to meet it and taller cards keep their natural height. Arrows get `top` = card.offsetTop + anchorH/2 - 23 (46px circle), set once via JS. Re-run the measurement on resize (debounced) and on `document.fonts.ready`. `touch-action:manipulation`; `:active` scale. Terminal arrows are `display:none`, never disabled. Keep: the dots + count row and arrow-key support with the standard guards. Verify: each arrow's bounding box identical across all steps where visible; arrow sits at the anchor card's vertical midway; no horizontal page overflow from the overhang at 390px; zero drift while spamming through every step.
 6. **Cross-article buttons carry a link-out icon** (his 2026-10-08 call). Any button or card that navigates to a different post gets a small bespoke external-link SVG icon (inline, `currentColor`, ~14px, never emoji), so it's obvious the tap leaves the page rather than interacting with the visualizer. Applies to all Keep Exploring cards and in-post cross-links.
 7. **Cite sources for factual claims** (his 2026-10-08 call). Every claim about how a real system works, every number, every named paper/benchmark/model gets a source: inline links or a Sources section at the end of the post. Verify against primary sources (official docs, system cards, the paper itself) before shipping, never from memory. Link the exact page, not a homepage.
 8. **Step-through widgets get left/right arrow keys** (his 2026-10-08 call on the lean-proofs stepper). ArrowLeft/ArrowRight move back/forward through steps. Guards, in this order: bail on any modifier key (alt/ctrl/meta/shift); bail if the event target is a textarea, input, select, or contentEditable (editors keep their caret keys); bail if the target sits inside a horizontally scrolling code block (arrows must keep scrolling it); bail unless the widget is at least partly on screen (no invisible step changes while the reader is elsewhere). Clamp at both ends: arrows never go past the first or last step. `preventDefault()` only on handled keys.
@@ -582,12 +749,42 @@ code.addEventListener('mouseover', function (e) {
   bubbleMode = 'hover';
 });
 ```
+10. **Step-through means click-per-step, never auto-play** (his 2026-10-09 call on the pocket-test race: "I hate the run pattern where you click and wait"). No "Run" / "Play" button that animates the whole sequence on a timer while the reader watches. Every step advances on an explicit user action: a Next button, a tap on the widget, or arrow keys (rule 8). One click = one step. The reader controls the pace; the widget never moves on its own. The final tap reveals the end state; offer a replay affordance that resets to step 0 instead of replaying automatically. This applies to every step-through, race, and timeline widget going forward.
+11. **Research uses the most modern papers available** (his 2026-10-09 call). When a post needs research, find the latest peer-reviewed papers on the topic, not the most-cited classics. Check publication dates; a 2025 paper beats a 2018 paper on the same finding. Prefer primary sources (the paper itself, official data) over news summaries of the paper. If newer research updates or contradicts an older finding, the newer one wins and the post says so. Every factual claim still gets its exact source link (rule 7).
+12. **Speed comparisons get bouncing balls, not static bars** (his 2026-10-10 call: "add this bouncing balls to my visualizers skill pls when it comes to showing speed", from tov.sh). When a visualizer compares speeds (benchmarks, latencies, throughput), each row gets a ball that ping-pongs along its track forever, at a pace proportional to the measured value. The motion IS the data: a faster ball means a faster system, readable at a glance without parsing numbers. This does not conflict with rule 10 (click-per-step): rule 10 covers step-throughs where the reader follows a sequence. Bouncing balls are ambient; the reader never waits on them and there is no sequence to control. If a widget has both a sequence and a speed comparison, rule 10 wins.
+```css
+.race-track{position:relative; height:22px; background:var(--viz-panel2);
+  border:1px solid var(--viz-line); border-radius:999px; overflow:hidden;}
+.race-ball{position:absolute; top:50%; left:0; width:16px; height:16px; margin-top:-8px;
+  border-radius:50%; background:#dcdce0;
+  animation:race-bounce var(--t,1s) linear infinite alternate;}
+.race-ball.fast{background:var(--viz-accent); box-shadow:0 0 10px rgba(232,163,61,.55);}
+@keyframes race-bounce{
+  0%{left:0; transform:scale(.72,1.25);}            /* squash into the wall */
+  8%{transform:scale(1,1);}
+  92%{transform:scale(1,1);}
+  100%{left:calc(100% - 16px); transform:scale(.72,1.25);}
+}
+@media (prefers-reduced-motion:reduce){ .race-ball{animation:none; left:calc(100% - 16px);} }
+```
+```js
+// Per-lane duration: fastest lane is 0.9s, the rest scale by the speed ratio.
+// Cap the slowest at ~9s so it reads as slow, not frozen.
+lanes.forEach(function(l){
+  var t = 0.9 * (vmax / l.v);
+  l.ball.style.setProperty('--t', Math.min(t, 9).toFixed(2) + 's');
+});
+```
+Operating rules: row layout is label left, track middle, right-aligned value column (bold figure + small caption). The fastest row gets the accent ball (plus glow), a bold label, and an accent caption ("fastest"); every other row gets a muted gray ball and a gray relative caption ("12% slower", "2.2× slower"). Balls in tabbed boards restart from the left wall on tab switch (hiding with `display:none` resets the animation), which is the desired behavior. Honor `prefers-reduced-motion`: balls sit still at the finished position and the numbers carry the comparison. Verify: balls visibly move at different paces matching the value ratios (spot-check two lanes with a stopwatch if the ratios are close); the squash reads at both walls; nothing shifts layout while they run.
+13. **Any drag/touch interaction gets the bottom-sheet-drag-lock treatment** (his 2026-10-10 call on yuru-ink: downward drags on the artwork were also dragging the native bottom sheet). These pages are opened inside a native bottom-sheet webview; a downward drag on the page yanks the whole sheet instead of reaching the interaction. Whenever a visualizer has a touch or drag surface, apply all four parts of `~/workspace/skills/bottom-sheet-drag-lock/SKILL.md`: (1) lock the page to the viewport (`position:fixed; inset:0; overscroll-behavior:none; overflow:hidden` on html/body), (2) `touch-action:none` on the drag surface, (3) non-passive `touchmove` + `preventDefault` (document-level for full-viewport pages with nothing scrollable, scoped to the surface otherwise), (4) block `gesturestart`. Tap targets keep `touch-action:manipulation`. This was missed on yuru-ink's first touch pass and had to be repaired after he reported it; do it in the same edit that adds the interaction, not after.
+14. **Ignore input during transition animations** (found 2026-10-10 on the ai-memory primer's compaction animation: rapid taps mid-animation raced the state machine and stranded it). While a widget is mid-transition, its input handlers ignore new taps/clicks until the transition completes — a second interaction must never start from a half-rendered state. Implement with an `animating` flag checked at the top of every input handler, cleared on `transitionend` with a timeout fallback. Verify with rapid-tap Playwright spam: no stranded states, no double-applied steps, zero pageerrors.
 
-## QA checklist (run before calling it done)
-- Zoom bars: scroll each row into view → bars animate once to the exact configured widths; zoom tag reads the computed factor ("zoomed 20×"); with JS disabled, bars still render (graceful: add `go` class server-side or accept static full widths).
+## QA checklist (run before calling it done)- Zoom bars: scroll each row into view → bars animate once to the exact configured widths; zoom tag reads the computed factor ("zoomed 20×"); with JS disabled, bars still render (graceful: add `go` class server-side or accept static full widths).
 - Dot grid: tap each scenario → exactly the configured number of dots flip, staggered, caption updates, `aria-pressed` follows; rapid taps don't strand timers.
 - Slider: drag thumb → all readouts update live; insight line states the takeaway; at min/max the math stays sane; vertical page scroll still works on mobile.
 - Estimator: type garbage/empty/huge values → sane fallback/clamp, never NaN; caveat card visible without scrolling on mobile.
 - Source cards: at 390px the badge row, title, and meta stack with no overlap or cramped columns; the whole card taps through to the exact linked page; badge icons render (no missing-glyph boxes).
+- Race balls: lanes move at visibly different paces matching the value ratios; squash reads at both walls; with reduced-motion the balls sit still; tab switches restart the race from the left.
+- Mic visualizer: stub getUserMedia (resolve fake stream / reject denied) → button flips idle/running/"tap to speak again", both canvases paint non-blank frames, denied message shows, no pageerrors; idle/running/denied screenshots reviewed at full size.
 - 390×844: no horizontal overflow in any pattern; dots stay circular; slider thumb reachable.
 - Zero console errors.
