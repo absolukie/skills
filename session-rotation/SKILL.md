@@ -34,3 +34,4 @@ The handoff brief contains, in this order:
 4. If the user is mid-conversation in this chat, say you are rotating and where the brief lives; do not silently switch context on them.
 5. Record the rotation in the daily log so the usage breakdown can attribute tokens per phase.
 6. Quick Q&A sessions never need rotation; this skill is for multi-phase build/debug work.
+7. Prevention beats rotation: batch work (skill A/B component trials, batch builds, other repeatable units) starts in a fresh short-lived root per batch instead of inside a long-lived root, so the bloat never accumulates. The coordinating root gets the summary plus file paths only. (Luke approved 2026-10-12; rule lives in the autonomous-deep-work skill, section 2.)

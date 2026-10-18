@@ -1,6 +1,6 @@
 ---
 name: "audio-redact"
-description: "Bleep PII (names, phone numbers, company names) out of audio recordings. Uses faster-whisper word-level timestamps to find spoken phrases, then bleeps them with a tone via ffmpeg, and verifies the redaction by re-transcribing."
+description: "Bleep PII (names, phone numbers, company names) out of audio recordings. Uses faster-whisper word-level timestamps to find spoken phrases, then bleeps them with a tone via ffmpeg, and verifies the redaction by re-transcribing. For video deliverables, redact PII with the mew instead of silence (see the video section)."
 ---
 
 # Audio Redact Skill
@@ -72,9 +72,35 @@ then run without `--dry-run`.
 - `ffmpeg` 8.x is expected on PATH. The script feeds WAV data directly to the
   model to avoid the `av`/`PyAV` version clash (`metadata_errors` kwarg).
 
+## Video redaction: use the mew (Luke's rule, 2026-10-11)
+
+When the deliverable is a **video** (for example a call transcript video), do
+NOT redact PII with silence or the 880 Hz beep. Use the mew: a short cat meow
+laid over each PII span. In a video the mew reads as an intentional, funny
+censor; silence reads like a glitch and the beep is harsh. Audio-only
+deliverables keep the default silence style above.
+
+The proven recipe (v3, from the 2026-10-09 call video):
+
+1. Find the spans exactly as for audio: faster-whisper word-level
+   timestamps, dry-run review first (mishears, spell-outs, partial names).
+2. Mew sample: `assets/mew.wav` in this skill (one mew, ~0.45 s), peak
+   normalized.
+3. Level: set the mew's loudness to **1/7 of the RMS of the speech just
+   before the span**. Level the mew sample itself BEFORE tiling; never
+   measure across the filled span, or silent gaps inflate its loudness.
+4. Fill: a span shorter than the mew gets a trimmed mew; a longer span gets
+   the mew tiled with 0.30 s gaps between mews.
+5. Edges: 60 ms crossfades in and out of every span, so it never clicks.
+6. Mux the redacted audio back onto the video, then verify the same way as
+   audio: re-transcribe the finished file and confirm zero PII tokens
+   remain.
+
 ## Provenance
 
 Built 2026-10-09 to redact two restaurant-call recordings for the blog post
 "My AI Calls Restaurants in China" (lukezhang.si/blog/ai-calls-to-china/):
 guest name, phone digits, and restaurant name bleeped; verified zero PII
-tokens in the re-transcribed redacted audio.
+tokens in the re-transcribed redacted audio. The mew variant was built the
+same day for that post's hero call-transcript video; Luke made it the
+standing rule for all video PII redaction on 2026-10-11.

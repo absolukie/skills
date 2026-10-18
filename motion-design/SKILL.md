@@ -1,6 +1,6 @@
 ---
 name: "motion-design"
-description: "Motion design system for explainer films and animated web pieces: story-arc timing bands, a motion language where movement carries meaning, scene-spec format, visual-system tokens, copy/sound/accessibility rules, and a verification checklist. Distilled from the @0xMovez motion-studio post (prompt by @0xCarnagee, principles from Meaghan Choi, ex-Meta/Anthropic designer). Use when building any explainer video, animated hero, or scroll-driven animated page."
+description: "Motion design system for explainer films and animated web pieces: story-arc timing bands, a motion language where movement carries meaning, scene-spec format, visual-system tokens, copy/sound/accessibility rules, an animation performance section (frame budget, composite-only properties, jank diagnosis, from Emil Kowalski), and a verification checklist. Distilled from the @0xMovez motion-studio post (prompt by @0xCarnagee, principles from Meaghan Choi, ex-Meta/Anthropic designer). Use when building any explainer video, animated hero, or scroll-driven animated page, and whenever an animation is janky or drops frames."
 ---
 
 # Motion Design Skill
@@ -94,12 +94,63 @@ Luke's explainers are scroll pages, not films. Map the system:
 - **Reduced-motion cut → `prefers-reduced-motion` media query.** Same content, motion removed. The ideas must survive without animation.
 - **Verification stills → 390px screenshots.** Every beat must read on a phone screen; text legible, no overflow.
 
+## Animation performance (frame budget)
+Distilled 2026-10-12 from Emil Kowalski's `animation-performance` skill (MIT, https://github.com/emilkowalski/skills, announced https://x.com/emilkowalski/status/2109277388437868623). His framing: performance is not a polish pass after the motion is good, it is what lets good motion register at all. Sonner at 30fps is the same code and nobody cares.
+
+**The budget.** 60fps gives the browser 16.7ms per frame. On a 120Hz screen, now most phones, it is 8ms. Design against the smaller number. A layout recalculation on a complex page can take over 100ms: that is not one missed frame, it is a dozen. Never conclude "it's fine" from a fast laptop; the bar is a mid-range phone. Luke's pages are phone-first, so this is the default case, not the edge case.
+
+**Hard rules.**
+1. **`transform` and `opacity` by default.** Anything else needs a reason. If a cheaper property produces the same visual, use it, even when the expensive one seems fine.
+2. **Name the cause before changing code.** Every fix states which cause below it addresses. "Added `will-change`, seems smoother" is not a diagnosis.
+3. **Never `transition: all`.** List the exact properties. `all` animates whatever changes next, including layout properties nobody intended.
+4. **Don't trade correctness for a best-effort optimization.** Hardware acceleration is something the browser may grant; which properties you animate is something you control. Spend effort on the second. Percentage transforms (`translateY(100%)`) stay the right call for elements of unknown size even though browsers have historically not accelerated them.
+
+**Property tiers.** To show a visual change the browser runs layout (measure size and position), paint (draw into layers), composite (put layers on screen). Every property enters at one point, and the cost differs by an order of magnitude:
+- **Composite only (cheapest):** `transform`, `opacity`, and in current Chrome/Firefox also `filter`, `clip-path`, `background-color`. Promoted to their own layer.
+- **Paint + composite:** `box-shadow`, `border-radius`, `color`. No re-measuring, but a redraw every frame.
+- **Layout + paint + composite (most expensive):** `width`, `height`, `padding`, `margin`, `top`, `left`, `border-width`. One growing element can move everything around it.
+
+**Swap down a tier:**
+| Instead of | Animate |
+|---|---|
+| `width` / `height` / `padding` to grow or shrink | `scale()` |
+| `top` / `left` / `margin` to move | `translate()` (percentages are relative to the element's own size) |
+| `display` / `visibility` swaps | `opacity` |
+| `box-shadow` | `filter: drop-shadow(...)` |
+
+The last one is the one people miss: an animated shadow looks harmless but repaints the element every frame. Layout animations do not always drop frames (an absolutely positioned element with few children can get away with `padding`), but a `padding` animation and a `scale()` animation look the same and only one cannot regress on a slower device. Pick the one with no downside. Layout properties also move the wrong things: animating a sidebar's `margin-left` pushes the content beside it every frame; `translateX` does not.
+
+**Where it runs.** JavaScript animation via `requestAnimationFrame` always runs on the main thread and competes with everything else the page is doing; when the main thread is busy, the frame is late. CSS transitions/keyframes and the Web Animations API (`element.animate()`) can be hardware-accelerated off the main thread. Reliably accelerated: `transform` and `opacity`. The trap pattern is motion that plays while the page is busy: route changes, tab indicators during navigation, anything firing alongside fetching or hydration. Vercel's dashboard animated its tab indicator with a JS shared-layout animation while the next page loaded and dropped frames; moving it to CSS fixed it. Working split: CSS for simple motion and anything that plays while the page is busy; JS animation for complex, interruptible, gesture-driven motion. (Framer Motion note, for React work: the `x`/`y`/`scale` shorthands are implemented with CSS variables and are not accelerated; animate the full `transform` string when the motion must survive a busy main thread.)
+
+**Don't animate through React state.** A hand-rolled animation that calls `setState` every frame re-renders the component every 16.7ms and the render alone blows the budget. Write to `ref.current.style` (or a motion value) instead. Look for state updates inside `requestAnimationFrame`, `pointermove`, `scroll`, or drag handlers.
+
+**Two traps that look correct.** Both use `transform` and still drop frames:
+- **Inherited CSS variables.** Vaul's drag got laggier once a drawer held more than about 20 items, with no re-renders: the drag distance was written to a CSS variable that `translateY()` read. Variables inherit, so changing one on a parent recalculates styles for every descendant, every frame. The more content, the slower each frame. Fix: set `transform` directly on the element. Suspect this whenever a transform animation degrades as content grows.
+- **Blur.** `filter: blur()` gets expensive fast, especially in Safari. Keep animated blur under 20px; 2 to 5px is enough to soften a crossfade.
+
+**`will-change` is the last step, not the first.** A browser can hand an animation from CPU to GPU mid-flight, and that hand-off can shift the element by a pixel at the start or end. `will-change: transform` promotes the element up front so no hand-off happens. Add it only once you see the shift or measured dropped frames: browsers already promote elements animating `transform` or `opacity`, and every promoted layer costs GPU memory. Put it on the element that animates, never on `*` or large containers. It earns its place on expensive paints, like a large blurred or filtered element; promote it and keep the layer small.
+
+**Symptom table (start here):**
+| Problem | Solution |
+|---|---|
+| Animation stutters | Animate `transform`/`opacity`, not `width`/`height`/`top`/`margin` |
+| Shadow animation is choppy | `filter: drop-shadow()` |
+| Jank only during navigation or loading | Move the animation to CSS or WAAPI so it runs off the main thread |
+| Hand-rolled animation drops frames in React | Write to `ref.current.style`, not state |
+| Drag gets laggier as the list grows | Stop animating an inherited CSS variable; set `transform` directly |
+| Blur transition lags (especially Safari) | Keep animated `blur()` under 20px |
+| Unexpected properties animate | Replace `transition: all` with explicit properties |
+| Element shifts 1px when motion starts or ends | `will-change: transform`, only once you see it |
+
+**Diagnose in this order** (most frequent cause first): (1) which properties animate, layout first, then `box-shadow`/`border-radius`; (2) does the jank coincide with the page being busy (navigation, fetching, hydration); (3) is React re-rendering per frame; (4) does it get worse as content grows (inherited variable, or too many nodes animating); (5) is a CSS variable animated at all; (6) any animated `blur()` above 20px; (7) still shifting, now add `will-change`. Confirm with a recording, not by feel: DevTools Performance panel for dropped frames and long tasks, Animations panel to slow motion down, and profile on a real mid-range phone. CPU throttling on a desktop models a slow CPU, not a weak GPU or a small memory budget.
+
 ## Verification checklist
 - [ ] Render one frame twice and diff it. Identical, or the pipeline is not deterministic.
 - [ ] A still at every beat: every line readable at 590px wide (phone: 390px, no overflow).
 - [ ] Watch it muted, then listen audio-only. Both must hold up.
 - [ ] A design-revise pass asking the review questions from Principles #2.
 - [ ] Accessibility pass: contrast, captions, no-flash, reduced-motion cut.
+- [ ] Performance pass: every animated property is `transform`/`opacity` or has a named reason; no `transition: all`; animated blur under 20px; no inherited CSS variable in a per-frame loop; `will-change` only where a shift was actually seen.
 - [ ] Every fix ships with a **before/after frame pair**. No "trust me" fixes.
 
 ## What sucked before (distilled 2026-10-06)
