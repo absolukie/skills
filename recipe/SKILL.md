@@ -49,7 +49,7 @@ Drafts live in ~/workspace/blog-drafts/recipes/<slug>/ following the blog draft 
 - Ship surgically (single-file pushes, compare-and-swap), never a full-tree push. Live means the served URL verified: HTTP 200, served bytes equal local bytes plus the standard 248-byte beacon delta.
 - The first page in the section is the specimen: the recipe from the lexerlux post itself, rebuilt in the format it demonstrates, credited on the page as the format's source with a link to the post.
 - Do not invent personal recipes of Luke's to fill the shelf. One honest specimen beats a padded section.
-- Public pages carry no sensitive information, ever, and never name Gabrielle.
+- Public pages carry no sensitive information, ever, and never name his wife.
 
 ## QA checks for a recipe page
 - Format: the page follows the house format exactly as codified above. Any deviation is a defect, not a style choice.
