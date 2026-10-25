@@ -16,6 +16,9 @@ Channel plan (set 2026-10-13):
   recursive structures) and space (orbital mechanics, particle starfields,
   eclipse and phase cycles), all math-built, on top of the existing ink and
   wave pieces. Interesting visuals first; the math stays invisible.
+- All text on Your Soup Is Typing is lowercase by default (Luke, 2026-10-19,
+  saved to skill at his direct instruction): on-screen text inside the
+  videos and the videos' titles alike.
 - Your Soup Is Typing: Luke committed to 10 Fourier trace videos. Its
   ingredient board is the private Soup Pantry
   (https://projects.lukezhang.si/soup-pantry/, Cloudflare Access, Luke only):

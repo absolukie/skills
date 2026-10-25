@@ -61,8 +61,25 @@ the video ends), and
   and visible. No error readout, no branding, no math words on screen.
 - Title: "How many circles / to draw <subject>?" The counter reads
   "1 circle" or "N circles" for the current stage.
+- ALL on-screen text on Your Soup Is Typing is lowercase, always (Luke,
+  2026-10-19, "make all text lowercase and save that to skill"): the title
+  renders "how many circles to draw <subject>?" in lowercase, and so does
+  the counter and every other text element, on still and moving traces.
 - Ending: after a brief hold on the completed trace, hard cut to the
-  original picture, with the title and final counter still visible. The
+  original picture, with the title and final counter still visible.
+- Circle counts are MEASURED, never inherited (Luke, 2026-10-19: "make
+  sure the circles is the minimum set to get minimal error"). A preset
+  ramp stage is not a measurement: the hamster Short's 48 came from the
+  still format's ramp and was never the measured minimum for that subject.
+  For any trace, still or moving, sweep the reconstruction error across
+  counts on the subject itself and use the smallest count that reaches
+  the error floor; report the count and its error with the render.
+- NO freeze tail (Luke, 2026-10-19, on the posted hamster video: "weird
+  extra freeze dead time at the end of the clip. I had to crop that"). A
+  trace video ends when the action ends: at most a 0.4s beat on the final
+  frame, never a long frozen hold. He crops nothing; the render ships at
+  the length the action takes. Intentional end beats (a sound hit, a still
+  overlay) stay only as long as the beat itself needs. The
   reveal MUST be the picture cropped to the stage's padded silhouette box
   (`Stage.reveal_crop`), placed on the stage transform, so the character
   lands on the traced outline at the same size and the crop edges meet
